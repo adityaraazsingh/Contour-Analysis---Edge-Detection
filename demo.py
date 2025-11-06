@@ -39,16 +39,45 @@ def sobel_edge_detection(image_smoothed, threshold=100):
     edge_map = (magnitude > threshold).astype(np.uint8) * 255
     return edge_map, magnitude, direction
 
+def find_and_draw_contours(edge_map, original_image):
+    """Step 4: Find contours from the edge map and draw them on the original image"""
+    contours, hierarchy = cv2.findContours(edge_map, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contour_img = original_image.copy()
+
+    for i, contour in enumerate(contours):
+        area = cv2.contourArea(contour)
+        perimeter = cv2.arcLength(contour, True)
+        M = cv2.moments(contour)
+        if M["m00"] != 0:
+            cx = int(M["m10"] / M["m00"])
+            cy = int(M["m01"] / M["m00"])
+            cv2.circle(contour_img, (cx, cy), 4, (0, 0, 255), -1)
+        else:
+            cx, cy = 0, 0
+
+        # Draw contour and label
+        cv2.drawContours(contour_img, [contour], -1, (0, 255, 0), 2)
+        cv2.putText(contour_img, f"#{i+1}", (cx + 10, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+
+        print(f"Contour {i+1}: Area={area:.2f}, Perimeter={perimeter:.2f}, Centroid=({cx},{cy})")
+
+    return contour_img, len(contours)
+
 # Example usage
 if __name__ == "__main__":
     gray = rgb_to_grayscale(image)
     smoothed = gaussian_smoothing(gray, sigma=1.5)
     edges, mag, theta = sobel_edge_detection(smoothed, threshold=100)
 
+    # Step 4: Contour analysis
+    contour_img, count = find_and_draw_contours(edges, image)
+    print(f"\nTotal contours found: {count}")
+
     # Display results
-    plt.figure(figsize=(12, 4))
-    plt.subplot(1, 3, 1); plt.imshow(gray, cmap='gray'); plt.title("Grayscale"); plt.axis('off')
-    plt.subplot(1, 3, 2); plt.imshow(smoothed, cmap='gray'); plt.title("Smoothed"); plt.axis('off')
-    plt.subplot(1, 3, 3); plt.imshow(edges, cmap='gray'); plt.title("Edges"); plt.axis('off')
+    plt.figure(figsize=(16, 5))
+    plt.subplot(1, 4, 1); plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)); plt.title("Original"); plt.axis('off')
+    plt.subplot(1, 4, 2); plt.imshow(gray, cmap='gray'); plt.title("Grayscale"); plt.axis('off')
+    plt.subplot(1, 4, 3); plt.imshow(edges, cmap='gray'); plt.title("Edges"); plt.axis('off')
+    plt.subplot(1, 4, 4); plt.imshow(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB)); plt.title("Contours"); plt.axis('off')
     plt.tight_layout()
     plt.show()
