@@ -1,6 +1,14 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from contour import (
+    find_contours_manual,
+    compute_area,
+    compute_perimeter,
+    compute_centroid
+)
+from PIL import Image, ImageDraw
+
 
 # Step 1: Load the image
 # image = cv2.imread('a.jpg')
@@ -9,7 +17,6 @@ import matplotlib.pyplot as plt
 image = cv2.imread('d.jpg')
 
 def rgb_to_grayscale(image):
-    """Step 2a: Convert BGR (OpenCV default) to Grayscale using weighted sum"""
     B, G, R = image[:, :, 0], image[:, :, 1], image[:, :, 2]
     grayscale = 0.299 * R + 0.587 * G + 0.114 * B
     return grayscale.astype(np.uint8)
@@ -31,7 +38,7 @@ def sobel_edge_detection(image_smoothed, threshold=50):
                    [ 0,  0,  0],
                    [ 1,  2,  1]])
 
-    Ix = cv2.filter2D(image_smoothed, cv2.CV_64F, Gx)
+    Ix = cv2.filter2D(image_smoothed, cv2.CV_64F, Gx)  # cv2.CV_64F it forves output to be float64
     Iy = cv2.filter2D(image_smoothed, cv2.CV_64F, Gy)
 
     magnitude = np.sqrt(Ix**2 + Iy**2)
@@ -41,28 +48,41 @@ def sobel_edge_detection(image_smoothed, threshold=50):
     return edge_map, magnitude, direction
 
 def find_and_draw_contours(edge_map, original_image):
-    """Step 4: Find contours from the edge map and draw them on the original image"""
-    contours, hierarchy = cv2.findContours(edge_map, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contour_img = original_image.copy()
+    """
+    Step 4: Find contours from the edge map and draw them on the original image
+    WITHOUT using cv2.
+    """
 
+    # 1. Find contours manually
+    contours = find_contours_manual(edge_map)
+
+    # 2. Convert original image (numpy array) to PIL image
+    contour_img = Image.fromarray(original_image.copy())
+    draw = ImageDraw.Draw(contour_img)
+
+    # 3. Iterate through contours
     for i, contour in enumerate(contours):
-        area = cv2.contourArea(contour)
-        perimeter = cv2.arcLength(contour, True)
-        M = cv2.moments(contour)
-        if M["m00"] != 0:
-            cx = int(M["m10"] / M["m00"])
-            cy = int(M["m01"] / M["m00"])
-            cv2.circle(contour_img, (cx, cy), 4, (0, 0, 255), -1)
-        else:
-            cx, cy = 0, 0
 
-        # Draw contour and label
-        cv2.drawContours(contour_img, [contour], -1, (0, 255, 0), 2)
-        cv2.putText(contour_img, f"#{i+1}", (cx + 10, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+        # Compute properties manually
+        area = compute_area(contour)
+        perimeter = compute_perimeter(contour)
+        cx, cy = compute_centroid(contour)
+
+        # Draw centroid (small red dot)
+        draw.ellipse((cy-2, cx-2, cy+2, cx+2), fill="red")
+
+        # Draw contour pixels (in green)
+        for (x, y) in contour:
+            draw.point((y, x), fill="green")
+
+        # Write contour ID near centroid
+        draw.text((cy + 5, cx), f"#{i+1}", fill="blue")
 
         print(f"Contour {i+1}: Area={area:.2f}, Perimeter={perimeter:.2f}, Centroid=({cx},{cy})")
 
-    return contour_img, len(contours)
+    return np.array(contour_img), len(contours)
+
+
 
 # Example usage
 if __name__ == "__main__":
