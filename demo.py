@@ -5,7 +5,8 @@ from contour import (
     find_contours_manual,
     compute_area,
     compute_perimeter,
-    compute_centroid
+    compute_centroid,
+    visualize_contours,
 )
 from PIL import Image, ImageDraw
 
@@ -14,7 +15,9 @@ from PIL import Image, ImageDraw
 # image = cv2.imread('a.jpg')
 # image = cv2.imread('b.jpg')
 # image = cv2.imread('c.jpg')
-image = cv2.imread('d.jpg')
+# image = cv2.imread('d.jpg')
+image = cv2.imread('f.jpeg')
+
 
 def rgb_to_grayscale(image):
     B, G, R = image[:, :, 0], image[:, :, 1], image[:, :, 2]
@@ -48,12 +51,8 @@ def sobel_edge_detection(image_smoothed, threshold=50):
     return edge_map, magnitude, direction
 
 def find_and_draw_contours(edge_map, original_image):
-    """
-    Step 4: Find contours from the edge map and draw them on the original image
-    WITHOUT using cv2.
-    """
 
-    # 1. Find contours manually
+    # 1. Find contours 
     contours = find_contours_manual(edge_map)
 
     # 2. Convert original image (numpy array) to PIL image
@@ -84,29 +83,29 @@ def find_and_draw_contours(edge_map, original_image):
 
 
 
-# Example usage
 if __name__ == "__main__":
+    # Step 1: Convert to grayscale
     gray = rgb_to_grayscale(image)
+
+    # Step 2: Smooth
     smoothed = gaussian_smoothing(gray, sigma=0.65)
+
+    # Step 3: Edge detection
     edges, mag, theta = sobel_edge_detection(smoothed, threshold=100)
 
-    # Step 4: Contour analysis
-    contour_img, count = find_and_draw_contours(edges, image)
-    print(f"\nTotal contours found: {count}")
+    # Step 4: Find contours manually
+    contours = find_contours_manual(edges)
 
-    # Show contour image separately using Matplotlib
-    plt.figure("Contour Analysis", figsize=(10, 7))
-    plt.imshow(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))
-    plt.title("Contour Analysis (Separate View)")
-    plt.axis("off")
-    plt.show()
+    # Step 5: Visualize shaded contours with legend
+    visualize_contours(edges, contours)
 
+    print(f"\nTotal contours found: {len(contours)}")
 
-    # Display results
+    # Display original processing pipeline
     plt.figure(figsize=(16, 5))
     plt.subplot(1, 4, 1); plt.imshow(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)); plt.title("Original"); plt.axis('off')
     plt.subplot(1, 4, 2); plt.imshow(gray, cmap='gray'); plt.title("Grayscale"); plt.axis('off')
     plt.subplot(1, 4, 3); plt.imshow(edges, cmap='gray'); plt.title("Edges"); plt.axis('off')
-    plt.subplot(1, 4, 4); plt.imshow(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB)); plt.title("Contours"); plt.axis('off')
+    plt.subplot(1, 4, 4); plt.imshow(edges, cmap='gray'); plt.title("Contours Shaded"); plt.axis('off')
     plt.tight_layout()
     plt.show()
